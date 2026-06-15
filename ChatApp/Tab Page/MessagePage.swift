@@ -9,77 +9,165 @@ import SwiftUI
 import FirebaseDatabase
 
 struct MessagePage: View {
-
+    
+    @State private var showProfilePage = false
+    
     @State private var username = ""
     @State private var searchText = ""
+    
+    @State private var users: [UserModel] = []
+    @State private var filteredUsers: [UserModel] = []
+    
     @State private var chatUsers: [ChatUser] = []
+    
     @State private var gotoChat = false
     @State private var selectedUserId = ""
     @State private var selectedUsername = ""
+    
+    @State private var isRefreshing = false
+    
     var body: some View {
-
-        NavigationStack{
+        
+        NavigationStack {
+            
             ZStack {
-
+                
                 Color.black
                     .ignoresSafeArea()
-
+                
                 VStack {
-                    Text("\(username)")
+                    
+                    // Header
+                    Text(username)
                         .foregroundColor(.white)
-                        .font(.system(size: 30))
+                        .font(.system(size: 28, weight: .bold))
+                        .padding(.top)
+                    
                     Divider()
                         .background(Color.gray)
-                    HStack(spacing: 10) {
-
-                                Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.gray)
-
-                                TextField(
-                                    "Search",
-                                    text: $searchText
-                                )
-                                .foregroundColor(.white)
-                            }
-                            .padding()
-                            .background(Color.gray.opacity(0.3))
-                            .cornerRadius(40)
-                            .padding(.horizontal)
-                    ScrollView {
-
-                        LazyVStack {
-
-                            ForEach(chatUsers) { user in
-
-                                Button {
-
-                                    selectedUserId = user.id
-                                    selectedUsername = user.username
-                                    gotoChat = true
-
-                                } label: {
-
-                                    HStack {
-
-                                        Circle()
-                                            .fill(Color.gray)
-                                            .frame(width: 55, height: 55)
-
-                                        VStack(alignment: .leading) {
-
-                                            Text(user.username)
-                                                .foregroundColor(.white)
-                                                .font(.headline)
-
-                                            Text("Tap to chat")
-                                                .foregroundColor(.gray)
-                                                .font(.caption)
+                    
+                    // Search Bar
+                    HStack {
+                        
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.gray)
+                        
+                        TextField(
+                            "Search Username",
+                            text: $searchText
+                        )
+                        .foregroundColor(.white)
+                        .onChange(of: searchText) { value in
+                            
+                            searchUsers(text: value)
+                        }
+                    }
+                    .padding()
+                    .background(Color.gray.opacity(0.3))
+                    .cornerRadius(40)
+                    .padding()
+                    
+                    // Search Result
+                    if !searchText.isEmpty {
+                        
+                        ScrollView {
+                            
+                            LazyVStack {
+                                
+                                ForEach(filteredUsers) { user in
+                                    
+                                    Button {
+                                        
+                                        selectedUserId = user.id
+                                        selectedUsername = user.username
+                                        
+                                        checkFollowStatus(userId: user.id)
+                                        
+                                    } label: {
+                                        
+                                        HStack {
+                                            
+                                            Circle()
+                                                .fill(Color.gray)
+                                                .frame(width: 50, height: 50)
+                                            
+                                            VStack(
+                                                alignment: .leading
+                                            ) {
+                                                
+                                                Text(user.username)
+                                                    .foregroundColor(.white)
+                                                
+                                                Text(user.fullname)
+                                                    .foregroundColor(.gray)
+                                                    .font(.caption)
+                                            }
+                                            
+                                            Spacer()
                                         }
-
-                                        Spacer()
+                                        .padding(.horizontal)
                                     }
-                                    .padding()
                                 }
+                            }
+                        }
+                        
+                    } else {
+                        
+                        // Chat List
+                        
+                        VStack{
+                            if isRefreshing {
+                                
+                                ProgressView("Refreshing...")
+                                    .tint(.white)
+                                    .foregroundColor(.white)
+                            }
+                            
+                            ScrollView {
+                                
+                                LazyVStack {
+                                    
+                                    ForEach(chatUsers) { user in
+                                        
+                                        Button {
+                                            
+                                            selectedUserId = user.id
+                                            selectedUsername = user.username
+                                            gotoChat = true
+                                            
+                                        } label: {
+                                            
+                                            HStack {
+                                                
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 55, height: 55)
+                                                
+                                                VStack(
+                                                    alignment: .leading
+                                                ) {
+                                                    
+                                                    Text(user.username)
+                                                        .foregroundColor(.white)
+                                                        .font(.headline)
+                                                    
+                                                    Text(user.lastMessage)
+                                                        .foregroundColor(.gray)
+                                                        .font(.caption)
+                                                        .lineLimit(1)
+                                                }
+                                                
+                                                Spacer()
+                                            }
+                                            .padding()
+                                        }
+                                    }
+                                }
+                                
+                            }
+                            .refreshable {
+                                
+                                await refreshChats()
                             }
                         }
                     }
@@ -87,112 +175,252 @@ struct MessagePage: View {
                     Spacer()
                 }
             }
-            .onAppear {
-                fetchCurrentUser()
-                fetchChats()
+            .navigationDestination(
+                isPresented: $showProfilePage
+            ) {
+                
+                UserProfilePage(
+                    userId: selectedUserId
+                )
             }
-            .navigationDestination(isPresented: $gotoChat) {
-
+            .navigationDestination(
+                isPresented: $gotoChat
+            ) {
                 OpenMassegPage(
                     profileName: selectedUsername,
                     otherUserId: selectedUserId
                 )
             }
         }
-        .navigationBarBackButtonHidden()
-    }
-    func fetchChats() {
-
-        guard let currentUserId =
-                UserDefaults.standard.string(forKey: "currentUserId")
-        else { return }
-
-        let ref = Database.database()
-            .reference()
-            .child("chats")
-
-        ref.observeSingleEvent(of: .value) { snapshot in
-
-            var users: [ChatUser] = []
-
-            for child in snapshot.children {
-
-                guard let roomSnap = child as? DataSnapshot else {
-                    continue
-                }
-
-                let roomId = roomSnap.key
-
-                if roomId.contains(currentUserId) {
-
-                    let ids = roomId.components(separatedBy: "_")
-
-                    let otherId = ids.first {
-                        $0 != currentUserId
-                    } ?? ""
-
-                    Database.database()
-                        .reference()
-                        .child("users")
-                        .child(otherId)
-                        .observeSingleEvent(of: .value) { userSnap in
-
-                            if let data =
-                                userSnap.value as? [String: Any] {
-
-                                let username =
-                                data["username"] as? String ?? ""
-
-                                if !users.contains(where: {
-                                    $0.id == otherId
-                                }) {
-
-                                    users.append(
-                                        ChatUser(
-                                            id: otherId,
-                                            username: username
-                                        )
-                                    )
-
-                                    chatUsers = users
-                                }
-                            }
-                        }
-                }
-            }
+        .onAppear {
+            
+            fetchCurrentUser()
+            fetchUsers()
+            fetchChats()
         }
     }
+    func refreshChats() async {
+        
+        isRefreshing = true
+        
+        chatUsers.removeAll()
+        
+        fetchChats()
+        
+        try? await Task.sleep(
+            nanoseconds: 1_000_000_000
+        )
+        
+        isRefreshing = false
+    }
+    // MARK: Current User
+    
     func fetchCurrentUser() {
-
-        guard let userId = UserDefaults.standard.string(forKey: "currentUserId") else {
-
-            print("No user found in UserDefaults")
-
-            print("Username:",
-                  UserDefaults.standard.string(forKey: "currentUsername") ?? "nil")
-
-            return
-        }
-
-        print("Fetching User ID:", userId)
-
-        let ref = Database.database().reference()
+        
+        guard let userId =
+                UserDefaults.standard.string(
+                    forKey: "currentUserId"
+                )
+        else { return }
+        
+        Database.database()
+            .reference()
             .child("users")
             .child(userId)
-
-        ref.observeSingleEvent(of: .value) { snapshot in
-
-            guard let data = snapshot.value as? [String: Any] else {
-                print("User data not found in Firebase")
-                return
+            .observeSingleEvent(of: .value) { snapshot in
+                
+                guard let data =
+                        snapshot.value as? [String: Any]
+                else { return }
+                
+                username =
+                data["username"] as? String ?? ""
             }
-
-            username = data["username"] as? String ?? ""
-
-            print("Current Username:", username)
+    }
+    
+    func checkFollowStatus(userId: String) {
+        
+        guard let currentUserId =
+                UserDefaults.standard.string(
+                    forKey: "currentUserId"
+                )
+        else { return }
+        
+        Database.database()
+            .reference()
+            .child("followers")
+            .child(userId)
+            .child(currentUserId)
+            .observeSingleEvent(of: .value) { snapshot in
+                
+                if snapshot.exists() {
+                    
+                    // Request accepted
+                    gotoChat = true
+                    
+                } else {
+                    
+                    // Not following yet
+                    showProfilePage = true
+                }
+            }
+    }
+    
+    // MARK: Fetch All Users
+    
+    func fetchUsers() {
+        
+        Database.database()
+            .reference()
+            .child("users")
+            .observe(.value) { snapshot in
+                
+                var tempUsers: [UserModel] = []
+                
+                for child in snapshot.children {
+                    
+                    guard let snap =
+                            child as? DataSnapshot,
+                          let data =
+                            snap.value as? [String: Any]
+                    else { continue }
+                    
+                    tempUsers.append(
+                        
+                        UserModel(
+                            id: snap.key,
+                            username:
+                                data["username"] as? String ?? "",
+                            fullname:
+                                data["fullname"] as? String ?? ""
+                        )
+                    )
+                }
+                
+                users = tempUsers
+                filteredUsers = tempUsers
+            }
+    }
+    
+    // MARK: Search User
+    
+    func searchUsers(text: String) {
+        
+        if text.isEmpty {
+            
+            filteredUsers = users
+            
+        } else {
+            
+            filteredUsers = users.filter {
+                
+                $0.username
+                    .lowercased()
+                    .contains(text.lowercased())
+            }
         }
     }
+    
+    // MARK: Fetch Chats
+    
+    func fetchChats() {
+        
+        guard let currentUserId =
+                UserDefaults.standard.string(
+                    forKey: "currentUserId"
+                )
+        else { return }
+        
+        Database.database()
+            .reference()
+            .child("chats")
+            .observeSingleEvent(of: .value) { snapshot in
+                
+                var tempUsers: [ChatUser] = []
+                
+                for child in snapshot.children {
+                    
+                    guard let roomSnap =
+                            child as? DataSnapshot
+                    else { continue }
+                    
+                    let roomId = roomSnap.key
+                    
+                    if roomId.contains(currentUserId) {
+                        
+                        let ids = roomId.components(
+                            separatedBy: "_"
+                        )
+                        
+                        let otherId =
+                        ids.first {
+                            $0 != currentUserId
+                        } ?? ""
+                        
+                        var lastMessage = ""
+                        var lastTime: Double = 0
+                        
+                        for msg in roomSnap.children {
+                            
+                            guard let msgSnap =
+                                    msg as? DataSnapshot,
+                                  let msgData =
+                                    msgSnap.value as? [String: Any]
+                            else { continue }
+                            
+                            let text =
+                            msgData["text"] as? String ?? ""
+                            
+                            let time =
+                            msgData["timestamp"] as? Double ?? 0
+                            
+                            if time > lastTime {
+                                
+                                lastTime = time
+                                lastMessage = text
+                            }
+                        }
+                        
+                        Database.database()
+                            .reference()
+                            .child("users")
+                            .child(otherId)
+                            .observeSingleEvent(of: .value) { userSnap in
+                                
+                                guard let userData =
+                                        userSnap.value
+                                        as? [String: Any]
+                                else { return }
+                                
+                                let username =
+                                userData["username"]
+                                as? String ?? ""
+                                
+                                tempUsers.removeAll {
+                                    $0.id == otherId
+                                }
+                                
+                                tempUsers.append(
+                                    
+                                    ChatUser(
+                                        id: otherId,
+                                        username: username,
+                                        lastMessage: lastMessage,
+                                        timestamp: lastTime
+                                    )
+                                )
+                                
+                                chatUsers =
+                                tempUsers.sorted {
+                                    $0.timestamp > $1.timestamp
+                                }
+                            }
+                    }
+                }
+            }
+    }
 }
+
 
 #Preview {
     MessagePage()

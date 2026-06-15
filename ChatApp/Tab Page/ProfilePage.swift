@@ -5,246 +5,403 @@
 //  Created by CDMI on 29/05/26.
 //
 
+//
+//  ProfilePage.swift
+//  ChatApp
+//
+
 import SwiftUI
-import FirebaseDatabaseInternal
+import FirebaseDatabase
 
 struct ProfilePage: View {
+    
     @State private var username = ""
-    let posts = Array(repeating: "profile", count: 12)
+    @State private var bio = ""
+    @State private var followersCount = 0
+    @State private var followingCount = 0
+    
     @State private var logout = false
-
+    
+    @State private var myPosts: [PostModel] = []
+    
+    @State private var showEditBio = false
+    @State private var newBio = ""
+    
+    
+    
     var body: some View {
-
-        NavigationStack{
+        
+        NavigationStack {
+            
             ScrollView {
-
+                
                 VStack(spacing: 16) {
-
-                    // Header
+                    
+                    // MARK: Profile Header
+                    
                     HStack {
-
+                        
                         Image("profile")
                             .resizable()
                             .scaledToFill()
                             .frame(width: 90, height: 90)
                             .clipShape(Circle())
-
+                        
                         Spacer()
-
-                        statView(count: "24", title: "Posts")
-
+                        
+                        statView(
+                            count: "\(myPosts.count)",
+                            title: "Posts"
+                        )
+                        
                         Spacer()
-
-                        statView(count: "1.2K", title: "Followers")
-
+                        
+                        statView(
+                            count: "\(followersCount)",
+                            title: "Followers"
+                        )
+                        
                         Spacer()
-
-                        statView(count: "345", title: "Following")
+                        
+                        statView(
+                            count: "\(followingCount)",
+                            title: "Following"
+                        )
                     }
                     .padding(.horizontal)
-
-                    // Name + Bio
-                    VStack(alignment: .leading, spacing: 4) {
-
-                        Text("\(username)")
+                    
+                    // MARK: Username + Bio
+                    
+                    VStack(
+                        alignment: .leading,
+                        spacing: 6
+                    ) {
+                        
+                        Text(username)
                             .font(.headline)
                             .foregroundColor(.white)
-
-                        Text("iOS Developer 📱")
-                            .foregroundColor(.white)
-
-                        Text("Building awesome apps with SwiftUI 🚀")
+                        
+                        Text(bio)
                             .foregroundColor(.gray)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: .leading
+                    )
                     .padding(.horizontal)
-
-                    // Buttons
+                    
+                    // MARK: Buttons
+                    
                     HStack(spacing: 10) {
-
+                        
                         Button {
-
+                            
+                            newBio = bio
+                            showEditBio = true
+                            
                         } label: {
-
-                            Text("Edit Profile")
+                            
+                            Text("Edit Bio")
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
-                                .background(Color.gray.opacity(0.25))
+                                .background(
+                                    Color.gray.opacity(0.25)
+                                )
                                 .cornerRadius(8)
                         }
-
-                        Button {
-
+                        
+                        NavigationLink {
+                            
+                            CreatePostPage()
+                            
                         } label: {
-
-                            Image(systemName: "person.badge.plus")
+                            
+                            Image(systemName: "plus")
                                 .foregroundColor(.white)
                                 .frame(width: 50)
                                 .padding(.vertical, 8)
-                                .background(Color.gray.opacity(0.25))
+                                .background(
+                                    Color.gray.opacity(0.25)
+                                )
                                 .cornerRadius(8)
                         }
                     }
                     .padding(.horizontal)
-
-                    // Story Highlights
-                    ScrollView(.horizontal, showsIndicators: false) {
-
-                        HStack(spacing: 15) {
-
-                            ForEach(0..<2, id: \.self) { _ in
-
-                                VStack {
-
-                                    Circle()
-                                        .stroke(Color.gray, lineWidth: 1)
-                                        .frame(width: 70, height: 70)
-                                        .overlay(
-                                            Image("profile")
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 62, height: 62)
-                                                .clipShape(Circle())
-                                        )
-
-                                    Text("Story")
-                                        .foregroundColor(.white)
-                                        .font(.caption)
-                                }
-                            }
-                            Button(action:{
-                                
-                            }) {
-                                VStack{
-                                    Circle()
-                                        .stroke(Color.gray, lineWidth: 1)
-                                        .frame(width: 70, height: 70)
-                                        .overlay(
-                                            Image(systemName: "plus")
-                                                .foregroundColor(.white)
-                                                .frame(width: 62, height: 62)
-                                                .clipShape(Circle())
-                                        )
-                                    Text("Story")
-                                        .foregroundColor(.white)
-                                        .font(.caption)
-                                }
-                            }
-                            
-                        }
-                        .padding(.horizontal)
-                    }
-
+                    
                     Divider()
                         .background(Color.gray)
-
-                    // Tab Icons
+                    
+                    // MARK: Grid Icon
+                    
                     HStack {
-
+                        
                         Spacer()
-
+                        
                         Image(systemName: "square.grid.3x3")
                             .foregroundColor(.white)
-
-                        Spacer()
-
-                        Image(systemName: "play.rectangle")
-                            .foregroundColor(.gray)
-
-                        Spacer()
-
-                        Image(systemName: "person.crop.square")
-                            .foregroundColor(.gray)
-
+                        
                         Spacer()
                     }
-
-                    // Posts Grid
+                    
+                    // MARK: Posts Grid
+                    
                     LazyVGrid(
-                        columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3),
+                        columns: Array(
+                            repeating: GridItem(.flexible()),
+                            count: 3
+                        ),
                         spacing: 2
                     ) {
-
-                        ForEach(posts.indices, id: \.self) { index in
-
-                            Image(posts[index])
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 130)
-                                .clipped()
+                        
+                        ForEach(myPosts) { post in
+                            
+                            AsyncImage(
+                                url: URL(
+                                    string: post.imageURL
+                                )
+                            ) { image in
+                                
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                
+                            } placeholder: {
+                                
+                                ProgressView()
+                            }
+                            .frame(height: 120)
+                            .clipped()
                         }
                     }
-                    Button(action:{
-
-                        UserDefaults.standard.removeObject(forKey: "currentUsername")
-                        UserDefaults.standard.removeObject(forKey: "currentUserId")
+                    
+                    // MARK: Logout
+                    
+                    Button {
+                        
+                        UserDefaults.standard.removeObject(
+                            forKey: "currentUsername"
+                        )
+                        
+                        UserDefaults.standard.removeObject(
+                            forKey: "currentUserId"
+                        )
+                        
                         logout = true
                         
-                    }) {
+                    } label: {
+                        
                         Text("Log Out")
                             .font(.system(size: 20))
                             .foregroundColor(.red)
                     }
+                    .padding(.top)
                 }
-                .navigationDestination(isPresented: $logout) {
-                    SigninPage()
-                }
-                .onAppear {
-                    fetchCurrentUser()
-                }
+                .padding(.top)
             }
             .background(Color.black)
-            .navigationBarTitleDisplayMode(.inline)
+            
+            .navigationDestination(
+                isPresented: $logout
+            ) {
+                
+                SigninPage()
+            }
+            
+            .alert(
+                "Edit Bio",
+                isPresented: $showEditBio
+            ) {
+                
+                TextField(
+                    "Enter Bio",
+                    text: $newBio
+                )
+                
+                Button("Save") {
+                    
+                    saveBio()
+                }
+                
+                Button(
+                    "Cancel",
+                    role: .cancel
+                ) { }
+            }
+            
+            .onAppear {
+                
+                fetchCurrentUser()
+                fetchMyPosts()
+                fetchFollowersCount()
+                fetchFollowingCount()
+            }
         }
     }
-
-    func statView(count: String, title: String) -> some View {
-
+    // MARK: Followers Count
+    
+    func fetchFollowersCount() {
+        
+        guard let currentUserId =
+                UserDefaults.standard.string(
+                    forKey: "currentUserId"
+                )
+        else { return }
+        
+        Database.database()
+            .reference()
+            .child("followers")
+            .child(currentUserId)
+            .observe(.value) { snapshot in
+                
+                followersCount =
+                Int(snapshot.childrenCount)
+            }
+    }
+    
+    // MARK: Following Count
+    
+    func fetchFollowingCount() {
+        
+        guard let currentUserId =
+                UserDefaults.standard.string(
+                    forKey: "currentUserId"
+                )
+        else { return }
+        
+        Database.database()
+            .reference()
+            .child("following")
+            .child(currentUserId)
+            .observe(.value) { snapshot in
+                
+                followingCount =
+                Int(snapshot.childrenCount)
+            }
+    }
+    
+    
+    // MARK: Stats View
+    
+    func statView(
+        count: String,
+        title: String
+    ) -> some View {
+        
         VStack {
-
+            
             Text(count)
                 .font(.headline)
                 .foregroundColor(.white)
-
+            
             Text(title)
                 .foregroundColor(.white)
         }
     }
-    func fetchCurrentUser() {
-
-        guard let userId = UserDefaults.standard.string(forKey: "currentUserId") else {
-
-            print("No user found in UserDefaults")
-
-            print("Username:",
-                  UserDefaults.standard.string(forKey: "currentUsername") ?? "nil")
-
-            return
-        }
-
-        print("Fetching User ID:", userId)
-
-        let ref = Database.database().reference()
+    
+    // MARK: Save Bio
+    
+    func saveBio() {
+        
+        guard let userId =
+                UserDefaults.standard.string(
+                    forKey: "currentUserId"
+                )
+        else { return }
+        
+        Database.database()
+            .reference()
             .child("users")
             .child(userId)
-
-        ref.observeSingleEvent(of: .value) { snapshot in
-
-            guard let data = snapshot.value as? [String: Any] else {
-                print("User data not found in Firebase")
-                return
+            .updateChildValues([
+                
+                "bio": newBio
+            ])
+        
+        bio = newBio
+    }
+    
+    // MARK: Fetch User
+    
+    func fetchCurrentUser() {
+        
+        guard let userId =
+                UserDefaults.standard.string(
+                    forKey: "currentUserId"
+                )
+        else { return }
+        
+        Database.database()
+            .reference()
+            .child("users")
+            .child(userId)
+            .observeSingleEvent(
+                of: .value
+            ) { snapshot in
+                
+                guard let data =
+                        snapshot.value as? [String: Any]
+                else { return }
+                
+                username =
+                data["username"] as? String ?? ""
+                
+                bio =
+                data["bio"] as? String ?? ""
             }
-
-            username = data["username"] as? String ?? ""
-
-            print("Current Username:", username)
-        }
+    }
+    
+    // MARK: Fetch My Posts
+    
+    func fetchMyPosts() {
+        
+        let currentUserId =
+        UserDefaults.standard.string(
+            forKey: "currentUserId"
+        ) ?? ""
+        
+        Database.database()
+            .reference()
+            .child("posts")
+            .observe(.value) { snapshot in
+                
+                var tempPosts: [PostModel] = []
+                
+                for child in snapshot.children {
+                    
+                    guard let snap =
+                            child as? DataSnapshot,
+                          let data =
+                            snap.value as? [String: Any]
+                    else { continue }
+                    
+                    let userId =
+                    data["userId"] as? String ?? ""
+                    
+                    if userId == currentUserId {
+                        
+                        tempPosts.append(
+                            
+                            PostModel(
+                                id: snap.key,
+                                userId: userId,
+                                username:
+                                    data["username"] as? String ?? "",
+                                imageURL:
+                                    data["imageURL"] as? String ?? "",
+                                caption:
+                                    data["caption"] as? String ?? ""
+                            )
+                        )
+                    }
+                }
+                
+                myPosts = tempPosts.reversed()
+            }
     }
 }
 
 #Preview {
-    NavigationStack {
-        ProfilePage()
-    }
+    
+    ProfilePage()
 }

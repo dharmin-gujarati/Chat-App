@@ -8,6 +8,7 @@
 import Foundation
 
 struct MessageModel: Identifiable {
+    
     let id: String
     let senderId: String
     let receiverId: String
@@ -18,10 +19,31 @@ struct MessageModel: Identifiable {
 struct ChatUser: Identifiable {
     let id: String
     let username: String
+    let lastMessage: String
+    let timestamp: Double
 }
 
+struct PostModel: Identifiable {
+    
+    let id: String
+    let userId: String
+    let username: String
+    let imageURL: String
+    let caption: String
+}
 struct UserModel: Identifiable {
+    
     let id: String
     let username: String
     let fullname: String
 }
+
+
+struct FollowRequestModel: Identifiable {
+    
+    let id: String
+    let fromUserId: String
+    let username: String
+}
+
+

@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct PageManage: View {
-    @State private var selectedTab = 0
+    @State var selectedTab : Int
     var body: some View {
         
         NavigationStack{
@@ -86,5 +86,5 @@ struct PageManage: View {
 }
 
 #Preview {
-    PageManage()
+    PageManage(selectedTab: 0)
 }

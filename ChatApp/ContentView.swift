@@ -18,15 +18,15 @@ struct ContentView: View {
                 VStack {
                     Image("Logo")
                         .resizable()
-                            .scaledToFit()
-                            .frame(width: 200, height: 200)
+                        .scaledToFit()
+                        .frame(width: 200, height: 200)
                         .opacity(isVisible ? 1 : 0)
                         .scaleEffect(isVisible ? 1.0 : 0.8)
                         .onAppear {
                             withAnimation(.easeIn(duration: 2.0)) {
                                 isVisible = true
                             }
-
+                            
                             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                                 gotoNext = true
                             }
@@ -35,22 +35,22 @@ struct ContentView: View {
                         .bold()
                         .font(.system(size: 40))
                         .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .top,
+                                endPoint: .bottom
                             )
+                        )
                 }
                 .padding()
             }
             .navigationDestination(isPresented: $gotoNext) {
-                            if UserDefaults.standard.string(forKey: "currentUsername") != nil {
-                                PageManage()
-                            } else {
-                                SigninPage()
-                            }
-                        }
+                if UserDefaults.standard.string(forKey: "currentUsername") != nil {
+                    PageManage(selectedTab: 0)
+                } else {
+                    SigninPage()
+                }
+            }
         }
         
     }

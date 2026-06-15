@@ -13,6 +13,9 @@ struct SigninPage: View {
     @State private var password = ""
     @State private var gotoPageManage = false
     @State private var gotoSignupPage = false
+    
+    @State private var showAlert = false
+    @State private var alertMessage = ""
     var body: some View {
         NavigationStack{
             ZStack{
@@ -55,74 +58,95 @@ struct SigninPage: View {
                     }
                     .padding(.top,100)
                     Spacer()
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(height: 61)
-                        .cornerRadius(20)
-                    
-                        .overlay{
-                            HStack{
-                                TextField(
-                                    "",
-                                    text: $id,
-                                    prompt: Text("username")
-                                        .foregroundColor(.gray)
-                                )
-                                .foregroundColor(.white)
-                                .bold()
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .padding(.leading, 10)
-                                if !id.isEmpty {
-                                    Button(action:{
-                                        id = ""
-                                    }){
-                                        Image(systemName:"x.circle.fill")
-                                            .resizable()
-                                            .frame(width: 30 , height: 30)
-                                            .padding()
-                                            .foregroundColor(.white)
+                    VStack(alignment: .leading){
+                        Text("enter usrname")
+                            .foregroundColor(.gray)
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(height: 61)
+                            .cornerRadius(20)
+                        
+                            .overlay{
+                                HStack{
+                                    TextField(
+                                        "",
+                                        text: $id,
+                                        prompt: Text("username")
+                                            .foregroundColor(.gray)
+                                    )
+                                    .foregroundColor(.white)
+                                    .bold()
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .padding(.leading, 10)
+                                    if !id.isEmpty {
+                                        Button(action:{
+                                            id = ""
+                                        }){
+                                            Image(systemName:"x.circle.fill")
+                                                .resizable()
+                                                .frame(width: 30 , height: 30)
+                                                .padding()
+                                                .foregroundColor(.white)
+                                        }
                                     }
                                 }
                             }
-                            
-                        }
-                        .padding(.horizontal, 20)
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(height: 61)
-                        .cornerRadius(20)
-                    
-                        .overlay{
-                            HStack{
-                                TextField(
-                                    "",
-                                    text: $password,
-                                    prompt: Text("Password")
-                                        .foregroundColor(.gray)
-                                )
-                                .foregroundColor(.white)
-                                .bold()
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .padding(.leading, 10)
-                                if !password.isEmpty {
-                                    Button(action:{
-                                        password = ""
-                                    }){
-                                        Image(systemName:"x.circle.fill")
-                                            .resizable()
-                                            .frame(width: 30 , height: 30)
-                                            .padding()
-                                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 20)
+                    VStack(alignment: .leading){
+                        Text("enter password")
+                            .foregroundColor(.gray)
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(height: 61)
+                            .cornerRadius(20)
+                        
+                            .overlay{
+                                HStack{
+                                    TextField(
+                                        "",
+                                        text: $password,
+                                        prompt: Text("Password")
+                                            .foregroundColor(.gray)
+                                    )
+                                    .foregroundColor(.white)
+                                    .bold()
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .padding(.leading, 10)
+                                    if !password.isEmpty {
+                                        Button(action:{
+                                            password = ""
+                                        }){
+                                            Image(systemName:"x.circle.fill")
+                                                .resizable()
+                                                .frame(width: 30 , height: 30)
+                                                .padding()
+                                                .foregroundColor(.white)
+                                        }
                                     }
                                 }
                             }
-                            
-                        }
-                        .padding(.horizontal, 20)
+                    }
+                    .padding(.horizontal, 20)
                     
-                    Button(action:{
+                    Button(action: {
+                        
+                        if id.trimmingCharacters(in: .whitespaces).isEmpty {
+                            
+                            alertMessage = "Please enter velid username"
+                            showAlert = true
+                            return
+                        }
+                        
+                        if password.isEmpty {
+                            
+                            alertMessage = "Please enter velid password"
+                            showAlert = true
+                            return
+                        }
+                        
                         chackdata()
                     }){
                         Rectangle()
@@ -143,11 +167,11 @@ struct SigninPage: View {
                             gotoSignupPage = true
                             
                         }){
-                           
-                                    Text("Creat a new Account?")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.gray)
-                                
+                            
+                            Text("Creat a new Account?")
+                                .font(.system(size: 20))
+                                .foregroundColor(.gray)
+                            
                         }
                         .padding(.top, 10)
                         .padding(.trailing, 20)
@@ -158,8 +182,8 @@ struct SigninPage: View {
                         HStack(spacing:25) {
                             Image("google")
                                 .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 40, height: 40)
+                                .scaledToFit()
+                                .frame(width: 40, height: 40)
                             Text("sign in with google")
                                 .font(.system(size: 19))
                                 .foregroundColor(.white)
@@ -179,56 +203,62 @@ struct SigninPage: View {
                 }
             }
             .navigationDestination(isPresented: $gotoPageManage) {
-                PageManage()
+                PageManage(selectedTab: 0)
             }
             .navigationDestination(isPresented: $gotoSignupPage) {
                 SignupPage()
             }
         }
         .navigationBarBackButtonHidden()
+        .alert("Login Failed", isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
     }
     func chackdata() {
-
+        
         let ref = Database.database().reference().child("users")
-
+        
         ref.observeSingleEvent(of: .value) { snapshot in
-
+            
             var isLoginSuccess = false
-
+            
             for child in snapshot.children {
-
+                
                 guard let snap = child as? DataSnapshot,
                       let data = snap.value as? [String: Any]
                 else { continue }
-
+                
                 let dbUsername = data["username"] as? String ?? ""
                 let dbPassword = data["password"] as? String ?? ""
-
+                
                 if dbUsername == id && dbPassword == password {
-
+                    
                     UserDefaults.standard.set(dbUsername, forKey: "currentUsername")
                     UserDefaults.standard.set(snap.key, forKey: "currentUserId")
-
+                    
                     print("Saved Username:", dbUsername)
                     print("Saved User ID:", snap.key)
                     if dbUsername == id && dbPassword == password {
-
+                        
                         UserDefaults.standard.set(dbUsername, forKey: "currentUsername")
-
+                        
                         let test = UserDefaults.standard.string(forKey: "currentUsername") ?? "NOT SAVED"
                         print("Saved username =", test)
-
+                        
                         gotoPageManage = true
                     }
-
+                    
                     isLoginSuccess = true
                     gotoPageManage = true
                     break
                 }
             }
-
+            
             if !isLoginSuccess {
                 print("Invalid username or password")
+                showAlert = true
             }
         }
     }
